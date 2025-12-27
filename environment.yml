@@ -1,0 +1,19 @@
+name: scholar-rag
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pandas
+  - selenium
+  - tqdm
+  - python-dotenv
+  - pip:
+    - webdriver-manager
+    - langchain
+    - langchain-community
+    - langchain-openai
+    - chromadb
+    - openai
+    - tiktoken
