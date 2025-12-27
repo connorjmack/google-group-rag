@@ -33,7 +33,7 @@ class Checkpoint:
             with open(checkpoint_path, 'r') as f:
                 logger.info(f"Loaded checkpoint from {self.checkpoint_file}")
                 return json.load(f)
-        return {"groups": {}}
+        return {"groups": {}, "scraped_urls": []}
 
     def save(self):
         """Save checkpoint to disk."""
@@ -64,6 +64,24 @@ class Checkpoint:
             self.data["groups"][group_url] = {}
         self.data["groups"][group_url]["completed"] = True
         self.save()
+
+    def is_url_scraped(self, url: str) -> bool:
+        """Check if a URL has already been scraped."""
+        if "scraped_urls" not in self.data:
+            self.data["scraped_urls"] = []
+        return url in self.data["scraped_urls"]
+
+    def mark_url_scraped(self, url: str):
+        """Mark a URL as scraped."""
+        if "scraped_urls" not in self.data:
+            self.data["scraped_urls"] = []
+        if url not in self.data["scraped_urls"]:
+            self.data["scraped_urls"].append(url)
+            self.save()
+
+    def get_scraped_count(self) -> int:
+        """Get total number of unique URLs scraped."""
+        return len(self.data.get("scraped_urls", []))
 
 
 class GoogleGroupsScraper:
@@ -329,6 +347,13 @@ class GoogleGroupsScraper:
                 if not metadata:
                     continue
 
+                # Check for duplicate URL
+                thread_url = metadata.get('url', '')
+                if self.checkpoint.is_url_scraped(thread_url):
+                    logger.debug(f"Skipping duplicate URL: {thread_url}")
+                    self.checkpoint.update_thread_progress(group_url, global_index)
+                    continue
+
                 metadata['group_url'] = group_url
 
                 # Extract content
@@ -338,7 +363,8 @@ class GoogleGroupsScraper:
                 all_threads.append(metadata)
                 threads_scraped += 1
 
-                # Update checkpoint
+                # Mark URL as scraped and update checkpoint
+                self.checkpoint.mark_url_scraped(thread_url)
                 self.checkpoint.update_thread_progress(group_url, global_index)
 
                 logger.info(f"[{threads_scraped}/{Config.MAX_THREADS_PER_GROUP}] Scraped: {metadata['title'][:50]}")
@@ -380,9 +406,11 @@ class GoogleGroupsScraper:
             # Save to CSV
             if all_records:
                 self.save_to_csv(all_records)
-                logger.info(f"SUCCESS: Scraped {len(all_records)} total conversations")
+                total_unique = self.checkpoint.get_scraped_count()
+                logger.info(f"SUCCESS: Scraped {len(all_records)} new conversations")
+                logger.info(f"Total unique URLs in database: {total_unique}")
             else:
-                logger.warning("No records scraped")
+                logger.warning("No new records scraped (may all be duplicates)")
 
         except Exception as e:
             logger.error(f"CRITICAL ERROR: {e}", exc_info=True)
