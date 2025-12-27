@@ -21,6 +21,8 @@ class TestCheckpoint:
         """Set up test fixtures before each test."""
         # Create temporary checkpoint file
         self.temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+        # Write empty JSON object so it can be loaded
+        self.temp_file.write('{}')
         self.temp_file.close()
         self.checkpoint_path = self.temp_file.name
 

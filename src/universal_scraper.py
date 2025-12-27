@@ -28,12 +28,23 @@ class Checkpoint:
 
     def _load(self) -> Dict:
         """Load checkpoint from disk."""
+        default_data = {"groups": {}, "scraped_urls": []}
         checkpoint_path = Path(self.checkpoint_file)
         if checkpoint_path.exists():
             with open(checkpoint_path, 'r') as f:
-                logger.info(f"Loaded checkpoint from {self.checkpoint_file}")
-                return json.load(f)
-        return {"groups": {}, "scraped_urls": []}
+                try:
+                    data = json.load(f)
+                    # Ensure required keys exist
+                    if "groups" not in data:
+                        data["groups"] = {}
+                    if "scraped_urls" not in data:
+                        data["scraped_urls"] = []
+                    logger.info(f"Loaded checkpoint from {self.checkpoint_file}")
+                    return data
+                except json.JSONDecodeError:
+                    logger.warning(f"Invalid JSON in checkpoint file, using defaults")
+                    return default_data
+        return default_data
 
     def save(self):
         """Save checkpoint to disk."""
