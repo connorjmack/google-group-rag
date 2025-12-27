@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Data (Never commit datasets)
+data/
+*.csv
+*.json
+
+# Environment Variables (Safety)
+.env
+.env.local
+
+# Virtual Environments
+venv/
+env/
